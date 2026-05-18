@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hermes-DeepSeek AI Chat</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); height: 100vh; display: flex; justify-content: center; align-items: center; }
+        .container { width: 90%; max-width: 1200px; height: 90vh; background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); display: flex; overflow: hidden; }
+        .sidebar { width: 280px; background: #f8f9fa; border-right: 1px solid #e0e0e0; padding: 20px; display: flex; flex-direction: column; }
+        .sidebar h2 { font-size: 20px; margin-bottom: 20px; color: #333; }
+        .model-selector { margin-bottom: 20px; }
+        .model-selector label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
+        select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: white; }
+        .status { padding: 12px; background: #e8f5e9; border-radius: 8px; margin-top: auto; font-size: 12px; }
+        .status.online { background: #e8f5e9; color: #2e7d32; }
+        .status.offline { background: #ffebee; color: #c62828; }
+        .chat-area { flex: 1; display: flex; flex-direction: column; }
+        .messages { flex: 1; overflow-y: auto; padding: 20px; background: #fafafa; }
+        .message { margin-bottom: 16px; display: flex; animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .message.user { justify-content: flex-end; }
+        .message-content { max-width: 70%; padding: 12px 16px; border-radius: 12px; word-wrap: break-word; }
+        .message.user .message-content { background: #667eea; color: white; border-bottom-right-radius: 4px; }
+        .message.assistant .message-content { background: white; color: #333; border-bottom-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .input-area { padding: 20px; background: white; border-top: 1px solid #e0e0e0; display: flex; gap: 12px; }
+        textarea { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: inherit; font-size: 14px; resize: vertical; min-height: 60px; }
+        button { padding: 12px 24px; background: #667eea; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: #5a67d8; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .clear-btn { background: #ef4444; }
+        .clear-btn:hover { background: #dc2626; }
+        .header { padding: 20px; background: white; border-bottom: 1px solid #e0e0e0; }
+        .header h1 { font-size: 24px; color: #333; }
+        .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h2>🤖 AI Assistant</h2>
+            <div class="model-selector">
+                <label>Model</label>
+                <select id="model">
+                    <option value="ollama/hermes3">Hermes3 (Fast)</option>
+                    <option value="ollama/deepseek-r1:1.5b">DeepSeek-R1 1.5B (Balanced)</option>
+                    <option value="ollama/deepseek-r1:8b">DeepSeek-R1 8B (Smart)</option>
+                </select>
+            </div>
+            <div class="model-selector">
+                <label>Temperature</label>
+                <input type="range" id="temperature" min="0" max="1.5" step="0.1" value="0.7">
+                <span id="tempValue">0.7</span>
+            </div>
+            <div class="status" id="status">Checking gateway status...</div>
+            <button class="clear-btn" onclick="clearChat()" style="margin-top: 12px;">Clear Chat</button>
+        </div>
+        <div class="chat-area">
+            <div class="header"><h1>💬 Hermes-DeepSeek Chat</h1></div>
+            <div class="messages" id="messages">
+                <div class="message assistant"><div class="message-content">👋 Hello! I'm your AI assistant powered by Hermes and DeepSeek. Ask me anything!</div></div>
+            </div>
+            <div class="input-area">
+                <textarea id="userInput" placeholder="Type your message here..." rows="2"></textarea>
+                <button onclick="sendMessage()" id="sendBtn">Send</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        let isStreaming = false;
+        async function checkStatus() {
+            try {
+                const response = await fetch('http://localhost:8080/health', { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+                if (response.ok) {
+                    document.getElementById('status').innerHTML = '✅ Gateway Online';
+                    document.getElementById('status').className = 'status online';
+                } else { throw new Error('Gateway offline'); }
+            } catch (error) {
+                document.getElementById('status').innerHTML = '❌ Gateway Offline\nRun: launchctl load ~/Library/LaunchAgents/com.hermes-deepseek.gateway.plist';
+                document.getElementById('status').className = 'status offline';
+            }
+        }
+        document.getElementById('temperature').addEventListener('input', function(e) { document.getElementById('tempValue').textContent = e.target.value; });
+        async function sendMessage() {
+            if (isStreaming) return;
+            const userInput = document.getElementById('userInput');
+            const message = userInput.value.trim();
+            if (!message) return;
+            userInput.value = '';
+            addMessage(message, 'user');
+            const loadingId = addLoadingIndicator();
+            const model = document.getElementById('model').value;
+            const temperature = parseFloat(document.getElementById('temperature').value);
+            isStreaming = true;
+            document.getElementById('sendBtn').disabled = true;
+            try {
+                const response = await fetch('http://localhost:8080/ai/chat/completions', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: model, messages: [{ role: "user", content: message }], stream: true, temperature: temperature, max_tokens: 1000 })
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                removeLoadingIndicator(loadingId);
+                const assistantMessageDiv = document.createElement('div');
+                assistantMessageDiv.className = 'message assistant';
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'message-content';
+                assistantMessageDiv.appendChild(contentDiv);
+                document.getElementById('messages').appendChild(assistantMessageDiv);
+                let fullContent = '';
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6);
+                            if (data === '[DONE]') continue;
+                            try {
+                                const json = JSON.parse(data);
+                                const content = json.choices[0]?.delta?.content || '';
+                                if (content) {
+                                    fullContent += content;
+                                    contentDiv.innerHTML = fullContent.replace(/\n/g, '<br>');
+                                    scrollToBottom();
+                                }
+                            } catch (e) {}
+                        }
+                    }
+                }
+                if (!fullContent) { contentDiv.innerHTML = '⚠️ No response received. The model might be thinking. Try again with "stream":true or increase timeout.'; }
+            } catch (error) {
+                removeLoadingIndicator(loadingId);
+                addMessage(`Error: ${error.message}. Make sure gateway is running.`, 'assistant');
+            } finally {
+                isStreaming = false;
+                document.getElementById('sendBtn').disabled = false;
+                scrollToBottom();
+            }
+        }
+        function addMessage(text, role) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.innerHTML = text.replace(/\n/g, '<br>');
+            messageDiv.appendChild(contentDiv);
+            messagesDiv.appendChild(messageDiv);
+            scrollToBottom();
+        }
+        function addLoadingIndicator() {
+            const messagesDiv = document.getElementById('messages');
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message assistant';
+            loadingDiv.id = 'loading-' + Date.now();
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.innerHTML = '<div class="loading"></div> Thinking...';
+            loadingDiv.appendChild(contentDiv);
+            messagesDiv.appendChild(loadingDiv);
+            scrollToBottom();
+            return loadingDiv.id;
+        }
+        function removeLoadingIndicator(id) { const element = document.getElementById(id); if (element) element.remove(); }
+        function clearChat() { document.getElementById('messages').innerHTML = ''; addMessage('👋 Chat cleared! How can I help you?', 'assistant'); }
+        function scrollToBottom() { const messagesDiv = document.getElementById('messages'); messagesDiv.scrollTop = messagesDiv.scrollHeight; }
+        document.getElementById('userInput').addEventListener('keypress', function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+        checkStatus();
+        setInterval(checkStatus, 10000);
+    </script>
+</body>
+</html>

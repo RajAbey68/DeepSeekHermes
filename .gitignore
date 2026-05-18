@@ -1,0 +1,20 @@
+# Secrets
+.env
+.env.*
+*.key
+*.pem
+
+# Node
+node_modules/
+
+# Logs
+*.log
+gateway.out.log
+gateway.err.log
+
+# OS
+.DS_Store
+
+# Local-only files (keeps the local Ollama config out of the cloud repo;
+# anchored to repo root so cloud/config.yaml is still tracked)
+/config.yaml

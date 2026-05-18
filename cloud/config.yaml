@@ -1,0 +1,10 @@
+telemetry:
+  level: info
+  exporter: stdout
+
+providers:
+  deepseek:
+    base-url: https://api.deepseek.com/
+    models:
+      - deepseek-chat
+      - deepseek-reasoner
