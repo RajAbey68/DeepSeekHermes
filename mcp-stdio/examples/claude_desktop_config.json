@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "deephermes": {
+      "command": "node",
+      "args": ["/Users/rajabey/hermes-deepseek-gateway/mcp-stdio/index.js"],
+      "env": {
+        "DEEPSEEK_GATEWAY_URL": "https://deephermes-116263110764.us-central1.run.app"
+      }
+    }
+  }
+}

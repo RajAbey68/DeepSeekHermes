@@ -39,9 +39,14 @@ function makeMcpServer() {
       {
         name: "ask_deepseek",
         description:
-          "Send a prompt to DeepSeek (via the deephermes Cloud Run gateway) and " +
-          "return the completion. Use deepseek-chat for general queries, " +
-          "deepseek-reasoner for tasks that benefit from explicit reasoning.",
+          "Ask DeepSeek (an open-source LLM family) via a private gateway, and return its reply. " +
+          "Reach for this when: " +
+          "(a) you want a second opinion to compare against your own answer; " +
+          "(b) the question involves math, logic puzzles, or multi-step reasoning — pass model='deepseek-reasoner'; " +
+          "(c) code review or an alternative implementation would help; " +
+          "(d) general factual questions where DeepSeek's training may add coverage. " +
+          "Models: 'deepseek-chat' (V3, fast, default) or 'deepseek-reasoner' (R1, slower, explicit chain-of-thought). " +
+          "The gateway is publicly callable — do not pass sensitive content.",
         inputSchema: {
           type: "object",
           properties: {

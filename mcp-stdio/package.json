@@ -1,0 +1,19 @@
+{
+  "name": "deephermes-mcp",
+  "version": "0.1.0",
+  "description": "MCP stdio server that exposes DeepSeek via the deephermes Cloud Run gateway",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "deephermes-mcp": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}
