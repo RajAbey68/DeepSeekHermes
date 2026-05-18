@@ -1,0 +1,17 @@
+{
+  "name": "deephermes-mcp-remote",
+  "version": "0.1.0",
+  "description": "Remote Streamable-HTTP MCP server in front of the deephermes gateway",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "express": "^4.19.0"
+  }
+}
