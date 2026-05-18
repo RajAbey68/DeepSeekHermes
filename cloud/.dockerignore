@@ -9,3 +9,4 @@ cleanup.sh
 ui.html
 .env
 .env.*
+config.yaml
